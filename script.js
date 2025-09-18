@@ -1,9 +1,4 @@
-/* script.js actualizado: cumple puntos solicitados */
-// LocalStorage keys used:
-// - usuarios : [{usuario, clave, role, telefono, email}]
-// - turnos : [{id, username, date, time, durationMin, direccion, telefono, servicio, active:true}]
-// - notificaciones_<username> : [messages]
-// - peluqueria_user : {username, role}
+// Guardar y cargar Usuarios, contraseñas, Fechas, direcicones, telefonos, mails.
 
 function loadUsuarios(){ return JSON.parse(localStorage.getItem('usuarios')||'[]'); }
 function saveUsuarios(u){ localStorage.setItem('usuarios', JSON.stringify(u)); }
@@ -23,13 +18,12 @@ function ensureAdmin(){
 function genId(){ return 't_' + Math.random().toString(36).slice(2,9); }
 
 document.addEventListener('DOMContentLoaded', function(){
-  ensureAdmin();
-  // If usuarios empty try to load data.json (fallback)
+  ensureAdmin()
   if(loadUsuarios().length === 0){
     fetch('./data.json').then(r=>r.json()).then(data=>{ if(Array.isArray(data) && data.length) saveUsuarios(data); }).catch(()=>{});
   }
 
-  // Login handling
+  // Ingreso
   const formLogin = document.getElementById('formLogin');
   if(formLogin){
     formLogin.addEventListener('submit', function(e){
@@ -47,7 +41,7 @@ document.addEventListener('DOMContentLoaded', function(){
     });
   }
 
-  // Register handling (requires usuario, clave, telefono, email)
+  // Registro
   const formReg = document.getElementById('formRegister');
   if(formReg){
     formReg.addEventListener('submit', function(e){
@@ -66,13 +60,12 @@ document.addEventListener('DOMContentLoaded', function(){
     });
   }
 
-  // Agenda page behavior
+  // Agenda 
   if(window.location.pathname.endsWith('agenda.html')){
     renderAgendaPage();
   }
 });
 
-// Renders and behaviors on agenda.html
 function renderAgendaPage(){
   const user = currentUser();
   const adminPanel = document.getElementById('adminPanel') || document.querySelector('.admin-grid');
@@ -81,7 +74,7 @@ function renderAgendaPage(){
   const notifEl = document.getElementById('userNotifications');
   const formRes = document.getElementById('formReserva');
 
-  // Notifications for user
+  // Notificaciones para el usuario
   if(notifEl){
     notifEl.innerHTML = '';
     if(user){
@@ -92,14 +85,14 @@ function renderAgendaPage(){
     }
   }
 
-  // Admin view: show only active turnos and hide reserve form
+  // Vista del administrador, solo turnos activos y notificaciones.
   if(user && user.username === 'Sergio'){
     if(adminPanel) adminPanel.style.display = 'block';
     if(formRes) formRes.style.display = 'none';
     // hide Mis reservas card if present
     const mis = document.querySelector('.card #misTurnos') || document.getElementById('misTurnos');
     if(mis){ var card = mis.closest('.card'); if(card) card.style.display = 'none'; }
-    // change heading 'Reservar turno' to 'Turnos Reservados'
+    // Turnos reservados
     const h3 = document.querySelector('main .card h3'); if(h3 && /Reservar turno/i.test(h3.textContent)) h3.textContent = 'Turnos Reservados';
     renderAdminList();
     renderAdminNotifications();
@@ -109,9 +102,7 @@ function renderAgendaPage(){
     renderUserTurnos();
   }
 
-  // Reservation submission (users only)
   if(formRes){
-    // remove previous handlers to avoid duplicate bindings
     formRes.addEventListener('submit', function(e){
       e.preventDefault();
       const fecha = (document.getElementById('resFecha')||{}).value;
@@ -121,16 +112,16 @@ function renderAgendaPage(){
       const tel = (document.getElementById('resTelefono')||{}).value.trim();
       const servicio = (document.getElementById('resServicio')||{}).value.trim();
       if(!fecha || !hora || !direccion || !tel){ alert('Completá Fecha, Hora, Dirección y Teléfono.'); return; }
-      // date constraints: today .. +1 month, Tue-Sat only
+      // 1 Mes de distancia max
       const today = new Date(); today.setHours(0,0,0,0);
       const sel = new Date(fecha + 'T00:00:00');
       const max = new Date(); max.setMonth(max.getMonth()+1); max.setHours(0,0,0,0);
       if(sel < today || sel > max){ alert('La fecha debe ser entre hoy y un mes desde hoy.'); return; }
       const dow = sel.getUTCDay(); if(dow===0 || dow===1){ alert('Solo se permiten turnos de martes a sabado.'); return; }
-      // time constraints 08:00 - 19:00
+      // Tiempos limites del dia
       const [hh,mm] = hora.split(':').map(x=>parseInt(x,10));
       if(hh < 8 || hh > 19 || (hh===19 && mm>0)){ alert('Hora fuera del rango permitido (08:00-19:00).'); return; }
-      // overlap and 30 min gap
+      // 30 Minutos de distancia
       const all = loadTurnos().filter(t=> t.active !== false && t.date === fecha);
       const tStart = new Date(); tStart.setHours(hh,mm,0,0);
       const tEnd = new Date(tStart.getTime() + dur*60000);
@@ -142,7 +133,7 @@ function renderAgendaPage(){
         if(Math.abs((tStart.getTime()-oEnd.getTime())/60000) < 30 || Math.abs((tEnd.getTime()-oStart.getTime())/60000) < 30){ alert('Deben quedar al menos 30 minutos entre turnos.'); return; }
       }
       const cur = currentUser(); if(!cur){ alert('Tenés que iniciar sesión para reservar.'); return; }
-      // create turno
+      // Crar turno
       const turno = { id: genId(), username: cur.username, date: fecha, time: hora, durationMin: dur, direccion: direccion, telefono: tel, servicio: servicio || '', active: true };
       const allTurnos = loadTurnos(); allTurnos.push(turno); saveTurnos(allTurnos);
       alert('Turno reservado correctamente.');
@@ -151,8 +142,6 @@ function renderAgendaPage(){
     renderAdminNotifications();
     });
   }
-
-  // helper: render admin list of active turnos
   
 function renderAdminList(){
     const adminList = document.getElementById('adminTurnList');
@@ -163,13 +152,12 @@ function renderAdminList(){
       adminList.innerHTML = '<div class="card inner"><h4 class="muted">No hay turnos activos</h4></div>';
       return;
     }
-    // Build a clean list (each item as a row with left: main info, right: contact + cancel button)
+    // Cancelar turnos, lista.
     all.forEach(t => {
       const users = loadUsuarios();
       const usr = users.find(u=> u.usuario === t.username || u.username === t.username) || {};
       const row = document.createElement('div');
       row.className = 'admin-turn row-between card inner';
-      // left column: user + date/time + service
       const left = document.createElement('div');
       left.className = 'admin-left-col';
       const nameEl = document.createElement('div');
@@ -177,7 +165,7 @@ function renderAdminList(){
       nameEl.textContent = (t.username || t.nombre || usr.nombre || '');
       const infoEl = document.createElement('div');
       infoEl.className = 'admin-info';
-            // format date and time in DD/MM/YYYY HH:mm
+            // Formato fecha y tiempo
       let fechaText = '';
       if(t.date){
         try{
@@ -198,7 +186,7 @@ function renderAdminList(){
       serviceEl.className = 'admin-service';
       serviceEl.textContent = `${t.servicio || ''}`;
       left.appendChild(serviceEl);
-      // right column: contact, address, email, cancel button
+      // Columna derecha
       const right = document.createElement('div');
       right.className = 'admin-right-col';
       const contact = document.createElement('div');
@@ -214,7 +202,6 @@ function renderAdminList(){
       row.appendChild(right);
       adminList.appendChild(row);
     });
-    // Attach cancel handlers
     adminList.querySelectorAll('.cancel-btn').forEach(b=>{
       b.addEventListener('click', function(){
         const id = this.getAttribute('data-id');
@@ -241,7 +228,7 @@ function renderAdminList(){
 }
 
 
-  // helper: render user's own turnos (only active)
+  // En caso de no haber turnos
   function renderUserTurnos(){
     const cont = document.getElementById('misTurnos');
     if(!cont) return;
@@ -261,15 +248,13 @@ function renderAdminList(){
   }
 }
 
-// utility
 function genId(){ return 't_' + Math.random().toString(36).slice(2,9); }
-
 
 function renderAdminNotifications(){
   const el = document.getElementById('adminNotifications');
   if(!el) return;
   el.innerHTML = '';
-  // iterate localStorage keys for notificaciones_
+  // Notificaciones
   let found = false;
   for(let i=0;i<localStorage.length;i++){
     const key = localStorage.key(i);
@@ -287,7 +272,7 @@ function renderAdminNotifications(){
 }
 
 
-// Logout handler
+// Desloguear
 document.addEventListener('DOMContentLoaded', function(){
   const btn = document.getElementById('btnLogout');
   if(btn){
@@ -313,16 +298,12 @@ function setDateLimits(){
   if(!el) return;
   const today = new Date(); today.setHours(0,0,0,0);
   const max = new Date(today.getTime());
-  // set exactly one month ahead: add 1 to month but handle month overflow
   max.setMonth(max.getMonth()+1);
-  // if month increment produced invalid date (e.g., Jan 31 +1 month -> Mar 3), adjust by setting to last day of previous month
   if(max.getMonth() === (today.getMonth()+2)%12 && max.getDate() !== today.getDate()){
-    // set to last day of previous month
-    max.setDate(0);
+  max.setDate(0);
   }
   el.min = formatDateToInput(today);
   el.max = formatDateToInput(max);
-  // optionally set default value to next available day (today)
   if(!el.value) el.value = formatDateToInput(today);
 }
 document.addEventListener('DOMContentLoaded', setDateLimits);
