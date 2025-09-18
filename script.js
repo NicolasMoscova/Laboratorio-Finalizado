@@ -1,0 +1,328 @@
+/* script.js actualizado: cumple puntos solicitados */
+// LocalStorage keys used:
+// - usuarios : [{usuario, clave, role, telefono, email}]
+// - turnos : [{id, username, date, time, durationMin, direccion, telefono, servicio, active:true}]
+// - notificaciones_<username> : [messages]
+// - peluqueria_user : {username, role}
+
+function loadUsuarios(){ return JSON.parse(localStorage.getItem('usuarios')||'[]'); }
+function saveUsuarios(u){ localStorage.setItem('usuarios', JSON.stringify(u)); }
+function loadTurnos(){ return JSON.parse(localStorage.getItem('turnos')||'[]'); }
+function saveTurnos(t){ localStorage.setItem('turnos', JSON.stringify(t)); }
+function currentUser(){ return JSON.parse(localStorage.getItem('peluqueria_user')||'null'); }
+function setCurrentUser(u){ if(u) localStorage.setItem('peluqueria_user', JSON.stringify(u)); else localStorage.removeItem('peluqueria_user'); }
+
+function ensureAdmin(){
+  let users = loadUsuarios();
+  if(!users.some(x=> x.usuario === 'Sergio' || x.username === 'Sergio')){
+    users.unshift({usuario:'Sergio', clave:'peluqueria', role:'admin', telefono:'', email:''});
+    saveUsuarios(users);
+  }
+}
+
+function genId(){ return 't_' + Math.random().toString(36).slice(2,9); }
+
+document.addEventListener('DOMContentLoaded', function(){
+  ensureAdmin();
+  // If usuarios empty try to load data.json (fallback)
+  if(loadUsuarios().length === 0){
+    fetch('./data.json').then(r=>r.json()).then(data=>{ if(Array.isArray(data) && data.length) saveUsuarios(data); }).catch(()=>{});
+  }
+
+  // Login handling
+  const formLogin = document.getElementById('formLogin');
+  if(formLogin){
+    formLogin.addEventListener('submit', function(e){
+      e.preventDefault();
+      const usuario = (document.getElementById('usuario')||{}).value.trim();
+      const clave = (document.getElementById('clave')||{}).value;
+      const users = loadUsuarios();
+      const me = users.find(u=> (u.usuario===usuario || u.username===usuario) && (u.clave===clave || u.password===clave));
+      if(me){
+        setCurrentUser({username: me.usuario || me.username, role: me.role || 'user'});
+        window.location.href = 'agenda.html';
+      } else {
+        alert('Usuario o contraseña incorrectos.');
+      }
+    });
+  }
+
+  // Register handling (requires usuario, clave, telefono, email)
+  const formReg = document.getElementById('formRegister');
+  if(formReg){
+    formReg.addEventListener('submit', function(e){
+      e.preventDefault();
+      const usuario = (document.getElementById('regUsuario')||{}).value.trim();
+      const clave = (document.getElementById('regClave')||{}).value;
+      const telefono = (document.getElementById('regPhone')||{}).value.trim();
+      const email = (document.getElementById('regEmail')||{}).value.trim();
+      if(!usuario || !clave || !telefono || !email){ alert('Completá todos los campos.'); return; }
+      let users = loadUsuarios();
+      if(users.find(u=> u.usuario===usuario || u.username===usuario)){ alert('El usuario ya existe.'); return; }
+      users.push({usuario:usuario, clave:clave, role:'user', telefono:telefono, email:email});
+      saveUsuarios(users);
+      alert('Registro exitoso. Ya podés iniciar sesión.');
+      window.location.href = 'login.html';
+    });
+  }
+
+  // Agenda page behavior
+  if(window.location.pathname.endsWith('agenda.html')){
+    renderAgendaPage();
+  }
+});
+
+// Renders and behaviors on agenda.html
+function renderAgendaPage(){
+  const user = currentUser();
+  const adminPanel = document.getElementById('adminPanel') || document.querySelector('.admin-grid');
+  const adminList = document.getElementById('adminTurnList');
+  const userList = document.getElementById('misTurnos');
+  const notifEl = document.getElementById('userNotifications');
+  const formRes = document.getElementById('formReserva');
+
+  // Notifications for user
+  if(notifEl){
+    notifEl.innerHTML = '';
+    if(user){
+      const key = 'notificaciones_' + user.username;
+      const notes = JSON.parse(localStorage.getItem(key)||'[]');
+      if(notes.length===0) notifEl.innerHTML = '<li>No hay notificaciones</li>';
+      else notes.forEach(n=> { const li=document.createElement('li'); li.textContent = n; notifEl.appendChild(li); });
+    }
+  }
+
+  // Admin view: show only active turnos and hide reserve form
+  if(user && user.username === 'Sergio'){
+    if(adminPanel) adminPanel.style.display = 'block';
+    if(formRes) formRes.style.display = 'none';
+    // hide Mis reservas card if present
+    const mis = document.querySelector('.card #misTurnos') || document.getElementById('misTurnos');
+    if(mis){ var card = mis.closest('.card'); if(card) card.style.display = 'none'; }
+    // change heading 'Reservar turno' to 'Turnos Reservados'
+    const h3 = document.querySelector('main .card h3'); if(h3 && /Reservar turno/i.test(h3.textContent)) h3.textContent = 'Turnos Reservados';
+    renderAdminList();
+    renderAdminNotifications();
+  } else {
+    if(adminPanel) adminPanel.style.display = 'none';
+    if(formRes) formRes.style.display = 'block';
+    renderUserTurnos();
+  }
+
+  // Reservation submission (users only)
+  if(formRes){
+    // remove previous handlers to avoid duplicate bindings
+    formRes.addEventListener('submit', function(e){
+      e.preventDefault();
+      const fecha = (document.getElementById('resFecha')||{}).value;
+      const hora = (document.getElementById('resHora')||{}).value;
+      const dur = parseInt((document.getElementById('resDur')||{value:30}).value,10) || 30;
+      const direccion = (document.getElementById('resDireccion')||{}).value.trim();
+      const tel = (document.getElementById('resTelefono')||{}).value.trim();
+      const servicio = (document.getElementById('resServicio')||{}).value.trim();
+      if(!fecha || !hora || !direccion || !tel){ alert('Completá Fecha, Hora, Dirección y Teléfono.'); return; }
+      // date constraints: today .. +1 month, Tue-Sat only
+      const today = new Date(); today.setHours(0,0,0,0);
+      const sel = new Date(fecha + 'T00:00:00');
+      const max = new Date(); max.setMonth(max.getMonth()+1); max.setHours(0,0,0,0);
+      if(sel < today || sel > max){ alert('La fecha debe ser entre hoy y un mes desde hoy.'); return; }
+      const dow = sel.getUTCDay(); if(dow===0 || dow===1){ alert('Solo se permiten turnos de martes a sabado.'); return; }
+      // time constraints 08:00 - 19:00
+      const [hh,mm] = hora.split(':').map(x=>parseInt(x,10));
+      if(hh < 8 || hh > 19 || (hh===19 && mm>0)){ alert('Hora fuera del rango permitido (08:00-19:00).'); return; }
+      // overlap and 30 min gap
+      const all = loadTurnos().filter(t=> t.active !== false && t.date === fecha);
+      const tStart = new Date(); tStart.setHours(hh,mm,0,0);
+      const tEnd = new Date(tStart.getTime() + dur*60000);
+      for(const ot of all){
+        const [oh,om] = ot.time.split(':').map(x=>parseInt(x,10));
+        const oStart = new Date(); oStart.setHours(oh,om,0,0);
+        const oEnd = new Date(oStart.getTime() + (ot.durationMin||30)*60000);
+        if(!(tEnd <= oStart || tStart >= oEnd)){ alert('Ya hay una reserva activa cercana a ese horario'); return; }
+        if(Math.abs((tStart.getTime()-oEnd.getTime())/60000) < 30 || Math.abs((tEnd.getTime()-oStart.getTime())/60000) < 30){ alert('Deben quedar al menos 30 minutos entre turnos.'); return; }
+      }
+      const cur = currentUser(); if(!cur){ alert('Tenés que iniciar sesión para reservar.'); return; }
+      // create turno
+      const turno = { id: genId(), username: cur.username, date: fecha, time: hora, durationMin: dur, direccion: direccion, telefono: tel, servicio: servicio || '', active: true };
+      const allTurnos = loadTurnos(); allTurnos.push(turno); saveTurnos(allTurnos);
+      alert('Turno reservado correctamente.');
+      renderUserTurnos();
+      renderAdminList();
+    renderAdminNotifications();
+    });
+  }
+
+  // helper: render admin list of active turnos
+  
+function renderAdminList(){
+    const adminList = document.getElementById('adminTurnList');
+    if(!adminList) return;
+    adminList.innerHTML = '';
+    const all = loadTurnos().filter(t=> t.active !== false);
+    if(all.length === 0){
+      adminList.innerHTML = '<div class="card inner"><h4 class="muted">No hay turnos activos</h4></div>';
+      return;
+    }
+    // Build a clean list (each item as a row with left: main info, right: contact + cancel button)
+    all.forEach(t => {
+      const users = loadUsuarios();
+      const usr = users.find(u=> u.usuario === t.username || u.username === t.username) || {};
+      const row = document.createElement('div');
+      row.className = 'admin-turn row-between card inner';
+      // left column: user + date/time + service
+      const left = document.createElement('div');
+      left.className = 'admin-left-col';
+      const nameEl = document.createElement('div');
+      nameEl.className = 'admin-name';
+      nameEl.textContent = (t.username || t.nombre || usr.nombre || '');
+      const infoEl = document.createElement('div');
+      infoEl.className = 'admin-info';
+            // format date and time in DD/MM/YYYY HH:mm
+      let fechaText = '';
+      if(t.date){
+        try{
+          const dt = new Date(t.date + 'T' + (t.time || '00:00'));
+          const fechaFormateada = dt.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit', year:'numeric'});
+          const horaFormateada = dt.toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
+          fechaText = (fechaFormateada + ' ' + horaFormateada).trim();
+        }catch(e){
+          fechaText = ((t.date||'') + ' ' + (t.time||'')).trim();
+        }
+      } else {
+        fechaText = ((t.date||'') + ' ' + (t.time||'')).trim();
+      }
+      infoEl.textContent = fechaText + (t.servicio ? ' — ' + t.servicio : '');
+      left.appendChild(nameEl);
+      left.appendChild(infoEl);
+      const serviceEl = document.createElement('div');
+      serviceEl.className = 'admin-service';
+      serviceEl.textContent = `${t.servicio || ''}`;
+      left.appendChild(serviceEl);
+      // right column: contact, address, email, cancel button
+      const right = document.createElement('div');
+      right.className = 'admin-right-col';
+      const contact = document.createElement('div');
+      contact.className = 'admin-contact';
+      contact.innerHTML = `Tel: ${t.telefono || usr.telefono || ''}<br>Dir: ${t.direccion || ''}<br>Email: ${usr.email || ''}`;
+      const btn = document.createElement('button');
+      btn.className = 'btn small cancel-btn';
+      btn.textContent = 'Cancelar';
+      btn.setAttribute('data-id', t.id);
+      right.appendChild(contact);
+      right.appendChild(btn);
+      row.appendChild(left);
+      row.appendChild(right);
+      adminList.appendChild(row);
+    });
+    // Attach cancel handlers
+    adminList.querySelectorAll('.cancel-btn').forEach(b=>{
+      b.addEventListener('click', function(){
+        const id = this.getAttribute('data-id');
+        const reason = prompt('Motivo de la cancelación (se notificará al usuario):');
+        if(reason === null) return;
+        const allTurnos = loadTurnos();
+        const idx = allTurnos.findIndex(x=> x.id === id);
+        if(idx === -1) return alert('Turno no encontrado');
+        const turno = allTurnos[idx];
+        allTurnos[idx].active = false;
+        saveTurnos(allTurnos);
+        // store notification for user
+        const key = 'notificaciones_' + turno.username;
+        const notes = JSON.parse(localStorage.getItem(key) || '[]');
+        notes.push(`Tu turno del ${turno.date} a las ${turno.time} fue cancelado por el administrador. Motivo: ${reason}`);
+        localStorage.setItem(key, JSON.stringify(notes));
+        alert('Turno cancelado y usuario notificado.');
+        // refresh lists
+        renderAdminList();
+        renderUserTurnos();
+        renderAdminNotifications();
+      });
+    });
+}
+
+
+  // helper: render user's own turnos (only active)
+  function renderUserTurnos(){
+    const cont = document.getElementById('misTurnos');
+    if(!cont) return;
+    const user = currentUser();
+    const all = loadTurnos().filter(t=> t.active !== false);
+    let list = [];
+    if(!user) { cont.innerHTML = '<li>No hay turnos (iniciá sesión)</li>'; return; }
+    if(user.username === 'Sergio'){ cont.innerHTML = '<li>Administrador - sin turnos personales</li>'; return; }
+    list = all.filter(t=> t.username === user.username);
+    cont.innerHTML = '';
+    if(list.length === 0){ cont.innerHTML = '<li>No tenés turnos reservados</li>'; return; }
+    list.forEach(t=>{
+      const li = document.createElement('li');
+      li.textContent = `${t.date} ${t.time} — ${t.servicio || ''} — Tel: ${t.telefono || ''} — Dir: ${t.direccion || ''}`;
+      cont.appendChild(li);
+    });
+  }
+}
+
+// utility
+function genId(){ return 't_' + Math.random().toString(36).slice(2,9); }
+
+
+function renderAdminNotifications(){
+  const el = document.getElementById('adminNotifications');
+  if(!el) return;
+  el.innerHTML = '';
+  // iterate localStorage keys for notificaciones_
+  let found = false;
+  for(let i=0;i<localStorage.length;i++){
+    const key = localStorage.key(i);
+    if(!key.startsWith('notificaciones_')) continue;
+    const username = key.replace('notificaciones_','');
+    const notes = JSON.parse(localStorage.getItem(key) || '[]');
+    notes.forEach(n=>{
+      const li = document.createElement('li');
+      li.textContent = username + ': ' + n;
+      el.appendChild(li);
+      found = true;
+    });
+  }
+  if(!found) el.innerHTML = '<li>No hay notificaciones</li>';
+}
+
+
+// Logout handler
+document.addEventListener('DOMContentLoaded', function(){
+  const btn = document.getElementById('btnLogout');
+  if(btn){
+    btn.addEventListener('click', function(e){
+      e.preventDefault();
+      setCurrentUser(null);
+      window.location.href = 'index.html';
+    });
+  }
+});
+
+
+
+function formatDateToInput(d){
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function setDateLimits(){
+  const el = document.getElementById('resFecha') || document.getElementById('fechaReserva');
+  if(!el) return;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const max = new Date(today.getTime());
+  // set exactly one month ahead: add 1 to month but handle month overflow
+  max.setMonth(max.getMonth()+1);
+  // if month increment produced invalid date (e.g., Jan 31 +1 month -> Mar 3), adjust by setting to last day of previous month
+  if(max.getMonth() === (today.getMonth()+2)%12 && max.getDate() !== today.getDate()){
+    // set to last day of previous month
+    max.setDate(0);
+  }
+  el.min = formatDateToInput(today);
+  el.max = formatDateToInput(max);
+  // optionally set default value to next available day (today)
+  if(!el.value) el.value = formatDateToInput(today);
+}
+document.addEventListener('DOMContentLoaded', setDateLimits);
