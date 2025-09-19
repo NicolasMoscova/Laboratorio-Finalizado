@@ -10,31 +10,14 @@ Permite reservar turnos con fecha y horario, gestionar usuarios y contar con un 
 
 - Registro e inicio de sesión de usuarios.
 - Reservas de turnos con fecha, hora y tipo de servicio.
-- Cancelación de turnos propios.
-- Panel exclusivo para el administrador:
-- Exportar turnos a un archivo `.json`.
-
+- Cancelación de turnos.
+- Panel exclusivo para el administrador.
 
 # Usuarios disponibles por defecto
 
 - **Administrador**  
 Usuario: `Sergio`  
 Contraseña: `peluqueria`  
-
-- **Usuario demo**    
-Usuario: `demo`  
-Contraseña: `demo`
-
-# Estructura del proyecto
-
-- `index.html` → página inicial con acceso a login, registro o reserva rápida.  
-- `login.html` → formulario de inicio de sesión.  
-- `register.html` → formulario de registro de nuevos usuarios.  
-- `agenda.html` → aplicación principal de reservas.  
-- `style.css` → estilos del sitio.  
-- `script.js` → lógica en JavaScript (manejo de usuarios, reservas, panel admin).  
-- `data.json` → archivo con datos iniciales de ejemplo.  
-- `README.md` → este documento explicativo.
 
 # Como levantar el proyecto
 
