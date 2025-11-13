@@ -1,4 +1,4 @@
-// Guardar y cargar Usuarios, contraseñas, Fechas, direcicones, telefonos, mails.
+// Guardar y cargar usuarios, contraseñas, fechas, direccones, telefonos, mails.
 
 function loadUsuarios(){ return JSON.parse(localStorage.getItem('usuarios')||'[]'); }
 function saveUsuarios(u){ localStorage.setItem('usuarios', JSON.stringify(u)); }
@@ -85,7 +85,7 @@ function renderAgendaPage(){
     }
   }
 
-  // Vista del administrador, solo turnos activos y notificaciones.
+  // Administrador, solo turnos activos y notificaciones
   if(user && user.username === 'Sergio'){
     if(adminPanel) adminPanel.style.display = 'block';
     if(formRes) formRes.style.display = 'none';
@@ -133,7 +133,7 @@ function renderAgendaPage(){
         if(Math.abs((tStart.getTime()-oEnd.getTime())/60000) < 30 || Math.abs((tEnd.getTime()-oStart.getTime())/60000) < 30){ alert('Deben quedar al menos 30 minutos entre turnos.'); return; }
       }
       const cur = currentUser(); if(!cur){ alert('Tenés que iniciar sesión para reservar.'); return; }
-      // Crar turno
+      // Crear turno
       const turno = { id: genId(), username: cur.username, date: fecha, time: hora, durationMin: dur, direccion: direccion, telefono: tel, servicio: servicio || '', active: true };
       const allTurnos = loadTurnos(); allTurnos.push(turno); saveTurnos(allTurnos);
       alert('Turno reservado correctamente.');
@@ -147,12 +147,13 @@ function renderAdminList(){
     const adminList = document.getElementById('adminTurnList');
     if(!adminList) return;
     adminList.innerHTML = '';
-    const all = loadTurnos().filter(t=> t.active !== false);
+    // Evitar turnos vacios
+    const all = loadTurnos().filter(t=> t.active !== false && t.id && t.date && t.username);
     if(all.length === 0){
       adminList.innerHTML = '<div class="card inner"><h4 class="muted">No hay turnos activos</h4></div>';
       return;
     }
-    // Cancelar turnos, lista.
+    // Cancelar turnos
     all.forEach(t => {
       const users = loadUsuarios();
       const usr = users.find(u=> u.usuario === t.username || u.username === t.username) || {};
@@ -233,16 +234,58 @@ function renderAdminList(){
     const cont = document.getElementById('misTurnos');
     if(!cont) return;
     const user = currentUser();
-    const all = loadTurnos().filter(t=> t.active !== false);
+    // Evitar turnos vacios
+    const all = loadTurnos().filter(t=> t.active !== false && t.id && t.date && t.username);
     let list = [];
     if(!user) { cont.innerHTML = '<li>No hay turnos (iniciá sesión)</li>'; return; }
     if(user.username === 'Sergio'){ cont.innerHTML = '<li>Administrador - sin turnos personales</li>'; return; }
     list = all.filter(t=> t.username === user.username);
     cont.innerHTML = '';
     if(list.length === 0){ cont.innerHTML = '<li>No tenés turnos reservados</li>'; return; }
+    
     list.forEach(t=>{
       const li = document.createElement('li');
-      li.textContent = `${t.date} ${t.time} — ${t.servicio || ''} — Tel: ${t.telefono || ''} — Dir: ${t.direccion || ''}`;
+      // Añado clase para usar flexbox
+      li.className = 'row-between'; 
+      
+      const text = document.createElement('span');
+      text.textContent = `${t.date} ${t.time} — ${t.servicio || ''} — Tel: ${t.telefono || ''} — Dir: ${t.direccion || ''}`;
+      
+      const btn = document.createElement('button');
+      btn.className = 'btn small'; // Clase de botón estándar
+      btn.textContent = 'Cancelar';
+      btn.setAttribute('data-id', t.id);
+      btn.style.backgroundColor = '#e11d48'; // Color rojo para cancelar
+
+      // Lógica de cancelación del usuario
+      btn.addEventListener('click', function(){
+        const id = this.getAttribute('data-id');
+        if(!confirm('¿Estás seguro de que querés cancelar este turno? Se notificará al administrador.')) return;
+        
+        const allTurnos = loadTurnos();
+        const idx = allTurnos.findIndex(x=> x.id === id);
+        if(idx === -1) return alert('Turno no encontrado');
+        
+        const turno = allTurnos[idx];
+        allTurnos[idx].active = false; // Cancela el turno
+        saveTurnos(allTurnos);
+        
+        // Notificar al admin (Sergio)
+        const key = 'notificaciones_Sergio'; // Notifica específicamente al admin de cancelaciones de turnos
+        const notes = JSON.parse(localStorage.getItem(key) || '[]');
+        notes.push(`El usuario ${turno.username} canceló su turno del ${turno.date} a las ${turno.time}.`);
+        localStorage.setItem(key, JSON.stringify(notes));
+        
+        alert('Turno cancelado. El administrador ha sido notificado.');
+        
+        // Refrescar vistas
+        renderUserTurnos();
+        renderAdminList();
+        renderAdminNotifications();
+      });
+      
+      li.appendChild(text);
+      li.appendChild(btn);
       cont.appendChild(li);
     });
   }
