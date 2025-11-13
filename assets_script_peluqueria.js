@@ -19,7 +19,7 @@
       alert("Solo se pueden sacar turnos de martes a sabado (no domingo ni lunes).");
       return false;
     }
-    // Chequeo de tiempo entre las 8 y las 19hs
+    // Chequeo de tiempo entre las 8hs y las 19hs
     var t = parseTime(reserva.time);
     var startHour = t.getHours();
     var startMinute = t.getMinutes();
@@ -43,16 +43,16 @@
       var endt = end;
   
       if(!(endt<=ot || start>=oend)){
-        alert("Ese horario ya está reservado (se sobrepone). Elige otro horario.");
+        alert("Ese horario ya está reservado. Elige otro horario.");
         return false;
       }
-      // Chequeo de 30 minutos
+      // Chequeo que haya 30 mins de distancia entre turnos
       if(minutesBetween(start, oend) < 30 || minutesBetween(endt, ot) < 30){
         alert("Debe quedar al menos 30 minutos de diferencia entre turnos.");
         return false;
       }
     }
-    // Guardados
+    // Turnos reservados
     list = loadReservas();
     list.push(reserva);
     saveReservas(list);
@@ -60,7 +60,7 @@
     return true;
   };
 
-  // Ver reservas
+  // Ver las reservas
   window.getVisibleReservas = function(username, role){
     var all = loadReservas();
     if(role && role.toLowerCase()==="admin") return all;
@@ -68,13 +68,13 @@
     return all.filter(r=>r.username===username);
   };
 
-  // Texto en pantalla depende de quien se loguea
+  // Verifico quien se logueaa
   function applyTitles(){
     var user = JSON.parse(localStorage.getItem("peluqueria_user")||"null");
     var titleEls = document.querySelectorAll(".main-title, #main-title, .titulo, h1.site-title");
     var subtitleEls = document.querySelectorAll(".main-subtitle, #main-subtitle, .subtitulo, p.site-subtitle");
     var isAdmin = user && user.username==="Sergio";
-    titleEls.forEach(e=>{ if(isAdmin) e.textContent = "Agenda Virtual"; else e.textContent = "Peluqueria Masculina"; });
+    titleEls.forEach(e=>{ if(isAdmin) e.textContent = "Agenda Virtual"; else e.textContent = "Peluqueria Masculina a Domicilio"; });
     subtitleEls.forEach(e=>{ if(isAdmin) e.textContent = "reserva tu turno de forma mas simple"; else e.textContent = "Ahora tenes la peluqueria al alcance de tu mano"; });
   }
   window.applyPeluqueriaTitles = applyTitles;
