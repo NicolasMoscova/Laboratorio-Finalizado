@@ -24,8 +24,6 @@ body {
   color: #0b1220;
   line-height: 1.6;
 }
-
-/* --- Mejoras de Tipografía y Espaciado --- */
 h1, h2, h3, h4, h5, h6, p {
   margin-top: 0;
   margin-bottom: 0.75rem;
@@ -57,12 +55,10 @@ h3 { font-size: 1.25rem; margin-bottom: 1.25rem; }
   text-align: center;
 }
 
-/* --- Tarjetas (Cards) más limpias --- */
 .card {
   background: var(--card);
-  padding: 24px; /* Más espaciado interno */
+  padding: 24px; 
   border-radius: var(--radius);
-  /* Sombra más suave y moderna */
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); 
   margin: 12px;
 }
@@ -79,7 +75,6 @@ h3 { font-size: 1.25rem; margin-bottom: 1.25rem; }
   justify-content: center;
 }
 
-/* --- Botones con Transiciones --- */
 .btn {
   background: var(--accent);
   color: #fff;
@@ -89,13 +84,11 @@ h3 { font-size: 1.25rem; margin-bottom: 1.25rem; }
   cursor: pointer;
   text-decoration: none;
   display: inline-block;
-  font-weight: 600; /* Texto más nítido */
-  /* Transición suave */
+  font-weight: 600; 
   transition: all 0.2s ease;
 }
 
 .btn:hover {
-  /* Efecto sutil al pasar el mouse */
   filter: brightness(1.1);
   transform: translateY(-1px);
 }
@@ -112,44 +105,37 @@ h3 { font-size: 1.25rem; margin-bottom: 1.25rem; }
 }
 
 .btn.outline:hover {
-  background: rgba(31, 111, 235, 0.05); /* Fondo suave al pasar el mouse */
-  filter: none; /* No necesita brillo */
+  background: rgba(31, 111, 235, 0.05); 
+  filter: none; 
 }
-
-/* Nueva clase para botones de peligro/cancelar */
 .btn.btn-danger {
   background-color: var(--danger);
   color: #fff;
 }
 
 .btn.btn-danger:hover {
-  background-color: #be163c; /* Más oscuro al pasar el mouse */
+  background-color: #be163c;
   filter: none;
 }
-
-/* --- Formularios más pulidos --- */
 .form {
   display: flex;
   flex-direction: column;
-  gap: 12px; /* Un poco más de espacio */
+  gap: 12px;
 }
 
 .form input,
 .form select {
-  padding: 12px; /* Más padding */
+  padding: 12px; 
   border-radius: 10px;
   border: 1px solid #e6edf3;
-  font-size: 1rem; /* Tamaño de fuente legible */
-  /* Transición para el foco */
+  font-size: 1rem; 
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Efecto de Foco (Focus) */
 .form input:focus,
 .form select:focus {
   outline: none;
   border-color: var(--accent);
-  /* Anillo de foco suave */
   box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.12);
 }
 
@@ -174,7 +160,7 @@ h3 { font-size: 1.25rem; margin-bottom: 1.25rem; }
 .brand {
   color: var(--accent);
   font-weight: 700;
-  font-size: 1.1rem; /* Apenas más grande */
+  font-size: 1.1rem; 
 }
 
 .grid {
@@ -184,7 +170,6 @@ h3 { font-size: 1.25rem; margin-bottom: 1.25rem; }
   padding-top: 18px;
 }
 
-/* --- Listas más limpias --- */
 .list {
   list-style: none;
   padding: 0;
@@ -197,21 +182,19 @@ h3 { font-size: 1.25rem; margin-bottom: 1.25rem; }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 10px; /* Más padding vertical */
+  padding: 14px 10px; 
   border-bottom: 1px solid #f1f5f9;
 }
 
-/* Quitar el borde del último ítem */
 .list li:last-child {
   border-bottom: none;
 }
 
-/* Estilo para el texto en la lista de "Mis Reservas" */
 .list li.row-between span {
-  flex: 1; /* Ocupa el espacio disponible */
-  padding-right: 15px; /* Separa el texto del botón */
-  white-space: normal; /* Permite que el texto baje de línea */
-  word-break: break-word; /* Corta palabras si es necesario */
+  flex: 1; 
+  padding-right: 15px; 
+  white-space: normal; 
+  word-break: break-word; 
 }
 
 
@@ -269,12 +252,10 @@ h3 { font-size: 1.25rem; margin-bottom: 1.25rem; }
 }
 
 .btn.small {
-  /* ... */
   border: none;
-  /* ... */
+
 }
 
-/* --- Estilos de Admin --- */
 .admin-turn {
   display: flex;
   justify-content: space-between;
@@ -324,11 +305,11 @@ h3 { font-size: 1.25rem; margin-bottom: 1.25rem; }
 }
 
 .card.inner {
-  background: #fdfdff; /* Un fondo apenas distinto */
+  background: #fdfdff; 
   padding: 18px;
   border-radius: 12px;
   box-shadow: none;
-  border: 1px solid #f1f5f9; /* Borde sutil */
+  border: 1px solid #f1f5f9;
 }
 
 .row-between {
